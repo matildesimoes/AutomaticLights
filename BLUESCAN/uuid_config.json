@@ -1,0 +1,8 @@
+{
+  "devices": {
+    "21c06d6f-f75f-4cd2-8a1a-8d553d8398e3": "Xiaomi 13T",
+    "849d9a3c-0bcf-47b3-b932-b57cca0918b7": "Mi A2"
+    },
+    "hass_url": "http://localhost:8123",
+    "hass_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjYWU5MTBjMWUwNmI0YTVhYmM4N2MxNmRmYjU4ODEwNyIsImlhdCI6MTc0NjIxOTIwOSwiZXhwIjoyMDYxNTc5MjA5fQ.dz0Ux7_hEz53RjxDSQyCHOg9nm1XCOpOkSJK6LYetDc"
+}
