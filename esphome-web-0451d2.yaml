@@ -1,6 +1,8 @@
 esphome:
-  name: d1-r2
-  friendly_name: D1 R2 Door Sensor
+  name: esphome-web-0451d2
+  friendly_name: Automatic Ligth
+  min_version: 2024.11.0
+  name_add_mac_suffix: false
 
 esp8266:
   board: esp01_1m
@@ -10,19 +12,16 @@ logger:
 
 # Enable Home Assistant API
 api:
-  encryption:
-    key: "o39WwXlyWOWjOBva0BzYQj2/imZHseqYTUpKP8tVi20="
 
+# Allow Over-The-Air updates
 ota:
-  platform: esphome
-  password: "3582b0b9ae8efe8c28f21579af0663a7"
+- platform: esphome
 
 wifi:
   networks:
-    - ssid: "ERROR404"
+    - ssid: "ERROR 404"
       password: !secret wifi_password
 
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "lansolo"
     password: !secret ap_password
