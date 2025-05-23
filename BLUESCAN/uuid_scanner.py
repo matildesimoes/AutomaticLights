@@ -1,7 +1,3 @@
-#!/usr/bin/env python3
-# Bluetooth Scanner with UUID Detection for Home Assistant
-# Uses Bleak to scan for BLE devices and identify them by UUID
-
 import asyncio
 import json
 import argparse
@@ -11,7 +7,6 @@ import requests
 import re
 from bleak import BleakScanner
 
-# Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -29,7 +24,7 @@ class UUIDBluetoothScanner:
         
         Args:
             target_devices (dict): Dictionary mapping UUIDs to device names
-            hass_url (str): Home Assistant URL (e.g., http://192.168.1.10:8123)
+            hass_url (str): Home Assistant URL
             hass_token (str): Long-lived access token for Home Assistant
         """
         self.target_devices = target_devices or {}
@@ -73,7 +68,6 @@ class UUIDBluetoothScanner:
         """
         uuids = set()
         
-        # Process manufacturer data
         for company_id, data in mfr_data.items():
             try:
                 if isinstance(data, (bytes, bytearray)):
@@ -81,28 +75,20 @@ class UUIDBluetoothScanner:
                 else:
                     hex_data = str(data)
                 
-                # Look for patterns like 021584... which often contain a UUID
-                if len(hex_data) >= 32:  # UUID is 16 bytes = 32 hex chars
-                    # Check for common Xiaomi/Mi patterns
+                if len(hex_data) >= 32: 
                     if company_id == 76 and hex_data.startswith('0215'):
-                        # Extract the 16 bytes UUID part after '0215'
                         uuid_part = hex_data[4:36]
                         
-                        # Format as standard UUID
                         uuid = f"{uuid_part[0:8]}-{uuid_part[8:12]}-{uuid_part[12:16]}-{uuid_part[16:20]}-{uuid_part[20:32]}"
                         uuids.add(uuid.lower())
                         
-                        # Also add the raw form without dashes
                         uuids.add(uuid_part.lower())
                     
-                    # Look for UUID patterns in the data
                     uuid_matches = re.findall(r'([0-9a-fA-F]{8}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{4}[0-9a-fA-F]{12})', hex_data)
                     for match in uuid_matches:
-                        # Format as standard UUID
                         uuid = f"{match[0:8]}-{match[8:12]}-{match[12:16]}-{match[16:20]}-{match[20:32]}"
                         uuids.add(uuid.lower())
                         
-                        # Also add the raw form without dashes
                         uuids.add(match.lower())
             except Exception as e:
                 logger.debug(f"Error extracting UUID from manufacturer data: {e}")
@@ -127,14 +113,12 @@ class UUIDBluetoothScanner:
             addr = device.address
             addr_lower = addr.lower()
             
-            # Skip if we've already processed this device with better signal
             if addr_lower in all_devices and all_devices[addr_lower]['rssi'] >= advertisement_data.rssi:
                 return
             
             rssi = advertisement_data.rssi
             signal_quality = self.classify_rssi(rssi)
             
-            # Process manufacturer data safely
             manufacturer_data = {}
             found_uuids = set()
             
@@ -149,10 +133,8 @@ class UUIDBluetoothScanner:
                         logger.debug(f"Error processing manufacturer data: {e}")
                         manufacturer_data[key] = str(value)
                 
-                # Extract UUIDs from manufacturer data
                 found_uuids.update(self.extract_uuid_from_mfr_data(advertisement_data.manufacturer_data))
             
-            # Store device information
             device_info = {
                 'address': device.address,
                 'name': device.name or 'Unknown',
@@ -162,15 +144,12 @@ class UUIDBluetoothScanner:
                 'uuids': list(found_uuids)
             }
             
-            # Add service UUIDs if available
             if advertisement_data.service_uuids:
                 device_info['service_uuids'] = [str(uuid) for uuid in advertisement_data.service_uuids]
                 found_uuids.update([str(uuid).lower() for uuid in advertisement_data.service_uuids])
             
-            # Store device
             all_devices[addr_lower] = device_info
             
-            # Check if any of the found UUIDs match our target devices
             for uuid in found_uuids:
                 if uuid in self.target_devices:
                     target_name = self.target_devices[uuid]
@@ -184,16 +163,13 @@ class UUIDBluetoothScanner:
                     }
         
         try:
-            # Create scanner with our callback
             scanner = BleakScanner(detection_callback=detection_callback)
             
-            # Start the scanner
             logger.info(f"Starting BLE scan for {scan_time} seconds...")
             await scanner.start()
             await asyncio.sleep(scan_time)
             await scanner.stop()
             
-            # Summary
             logger.info(f"Scan completed. Found {len(all_devices)} total devices, {len(target_devices_found)} target devices")
             
             return all_devices, target_devices_found
@@ -215,11 +191,9 @@ class UUIDBluetoothScanner:
         
         for addr, data in device_data.items():
             try:
-                # Create a sensor entity for the device
                 device_name = data['name'].lower().replace(' ', '_')
                 entity_id = f"sensor.bt_{device_name}"
                 
-                # Prepare data for HA
                 payload = {
                     "state": data['rssi'],
                     "attributes": {
@@ -232,7 +206,6 @@ class UUIDBluetoothScanner:
                     }
                 }
                 
-                # Send data to HA
                 url = f"{self.hass_url}/api/states/{entity_id}"
                 response = requests.post(url, headers=headers, json=payload)
                 
@@ -262,19 +235,16 @@ class UUIDBluetoothScanner:
         print("-" * 70)
         
         for i, (addr, dev_info) in enumerate(devices.items(), 1):
-            # Mark if device is in target list
             is_target = "✓" if addr in target_devices else " "
             target_name = target_devices[addr]['name'] if addr in target_devices else ""
             target_str = f" ({target_name})" if target_name else ""
             
             print(f"{i}. [{is_target}] {dev_info['name']} ({dev_info['address']}){target_str}")
             print(f"   RSSI: {dev_info['rssi']} dBm ({dev_info['signal_quality']})")
-            
-            # Print UUIDs if available
+
             if 'uuids' in dev_info and dev_info['uuids']:
                 print(f"   UUIDs: {', '.join(dev_info['uuids'])}")
-            
-            # Print manufacturer data if available
+  
             if 'manufacturer_data' in dev_info and dev_info['manufacturer_data']:
                 print(f"   Manufacturer Data: {dev_info['manufacturer_data']}")
             
@@ -332,11 +302,9 @@ class UUIDBluetoothScanner:
         all_devices, target_devices = await self.scan_for_devices(scan_time)
         self.print_devices(all_devices, target_devices)
         
-        # Generate and print config snippet
         config = self.generate_config(all_devices)
         self.print_config_snippet(config)
         
-        # Send to Home Assistant if requested
         if send_to_ha and target_devices and self.hass_url and self.hass_token:
             self.send_to_hass(target_devices)
         
@@ -349,15 +317,12 @@ class UUIDBluetoothScanner:
             while True:
                 start_time = time.time()
                 all_devices, target_devices = await self.scan_for_devices(scan_time)
-                
-                # Print a summary
+
                 logger.info(f"Found {len(all_devices)} total devices, {len(target_devices)} target devices")
                 
-                # Send to Home Assistant if configured
                 if target_devices and self.hass_url and self.hass_token:
                     self.send_to_hass(target_devices)
-                
-                # Calculate sleep time to maintain the interval
+
                 elapsed = time.time() - start_time
                 sleep_time = max(0, interval - elapsed)
                 
@@ -389,7 +354,6 @@ async def main_async():
     hass_url = None
     hass_token = None
     
-    # Load config from file if provided
     if args.config:
         try:
             with open(args.config, 'r') as f:
@@ -406,7 +370,6 @@ async def main_async():
             logger.error(f"Error loading config file: {e}")
             return 1
     
-    # Add UUIDs from command line
     if args.uuid:
         for uuid_str in args.uuid:
             try:
@@ -415,8 +378,7 @@ async def main_async():
             except ValueError:
                 logger.error(f"Invalid UUID format: {uuid_str}. Use UUID:NAME")
                 return 1
-    
-    # Override with command line arguments if provided
+
     if args.hass_url:
         hass_url = args.hass_url
     

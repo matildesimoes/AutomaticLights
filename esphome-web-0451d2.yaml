@@ -7,7 +7,6 @@ esphome:
 esp8266:
   board: esp01_1m
 
-# Enable logging
 logger:
 
 # Enable Home Assistant API
@@ -30,10 +29,9 @@ captive_portal:
 
 # HC-SR04 Ultrasonic Sensor Configuration
 sensor:
-  # Ultrasonic sensor setup
   - platform: ultrasonic
-    trigger_pin: GPIO5  # D1 on most D1 R2 boards
-    echo_pin: GPIO4     # D2 on most D1 R2 boards
+    trigger_pin: GPIO5 
+    echo_pin: GPIO4 
     name: "Door Distance"
     update_interval: 1s
     unit_of_measurement: "cm"
@@ -46,13 +44,13 @@ sensor:
     update_interval: 5s
     unit_of_measurement: "%"
     filters:
-      - lambda: return (x / 1024.0) * 100.0; # Convert analog reading to percentage
+      - lambda: return (x / 1024.0) * 100.0; 
     id: light_level
 
 # Light control with relay
 output:
   - platform: gpio
-    pin: GPIO14  # D5 on most D1 R2 boards
+    pin: GPIO14  
     id: light_output
 
 light:
@@ -61,7 +59,7 @@ light:
     output: light_output
     id: room_light
 
-# Simple mode switch to enable/disable automatic control
+# Switch to enable/disable automatic control
 switch:
   - platform: template
     name: "Auto Light Control"
