@@ -1,0 +1,46 @@
+alias: OFF2ON
+description: ""
+triggers:
+  - type: value
+    device_id: 1fb719cde51d9e4c0aee12fcdb8e524a
+    entity_id: 21de8f39b88bc7392a2f988a93e48a31
+    domain: sensor
+    trigger: device
+    below: 0.25
+conditions: []
+actions:
+  - if:
+      - type: is_voltage
+        condition: device
+        device_id: 1fb719cde51d9e4c0aee12fcdb8e524a
+        entity_id: a956f56584635e82ff4e1793445b8431
+        domain: sensor
+        below: 0.05
+    then:
+      - action: light.turn_on
+        metadata: {}
+        data: {}
+        target:
+          device_id: 1fb719cde51d9e4c0aee12fcdb8e524a
+          entity_id: light.esphome_web_0451d2_room_light
+  - if:
+      - condition: numeric_state
+        entity_id: sensor.bt_xiaomi_13t
+        above: -80
+    then:
+      - action: notify.mobile_app_2306epn60g
+        metadata: {}
+        data:
+          message: Welcome Home Leonardo!
+          title: Welcome Message
+  - if:
+      - condition: numeric_state
+        entity_id: sensor.bt_mi_a2
+        above: -80
+    then:
+      - action: notify.mobile_app_mi_a2
+        metadata: {}
+        data:
+          message: Welcome Home Matilde!
+          title: Welcome Message
+mode: single

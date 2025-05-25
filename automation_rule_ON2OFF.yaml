@@ -1,0 +1,26 @@
+alias: ON2OFF
+description: ""
+triggers:
+  - type: value
+    device_id: 1fb719cde51d9e4c0aee12fcdb8e524a
+    entity_id: 21de8f39b88bc7392a2f988a93e48a31
+    domain: sensor
+    trigger: device
+    above: 0.5
+conditions:
+  - condition: and
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.bt_xiaomi_13t
+        below: -85
+      - condition: numeric_state
+        entity_id: sensor.bt_mi_a2
+        below: -85
+actions:
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      device_id: 1fb719cde51d9e4c0aee12fcdb8e524a
+      entity_id: light.esphome_web_0451d2_room_light
+mode: single
