@@ -10,12 +10,14 @@ triggers:
 conditions:
   - condition: and
     conditions:
-      - condition: numeric_state
-        entity_id: sensor.bt_xiaomi_13t
-        above: -85
-      - condition: numeric_state
-        entity_id: sensor.bt_mi_a2
-        above: -85
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: sensor.bt_xiaomi_13t
+            above: -85
+          - condition: numeric_state
+            entity_id: sensor.bt_mi_a2
+            above: -85
 actions:
   - if:
       - type: is_voltage
