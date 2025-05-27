@@ -43,7 +43,9 @@ class UUIDBluetoothScanner:
         Returns:
             str: Signal quality classification
         """
-        if rssi >= -50:
+        if rssi == -100:
+            return "Not Detected"
+        elif rssi >= -50:
             return "Excellent"
         elif rssi >= -60:
             return "Good"
@@ -170,7 +172,25 @@ class UUIDBluetoothScanner:
             await asyncio.sleep(scan_time)
             await scanner.stop()
             
-            logger.info(f"Scan completed. Found {len(all_devices)} total devices, {len(target_devices_found)} target devices")
+            # Add missing target devices with -100 RSSI
+            found_uuids = set()
+            for device_data in target_devices_found.values():
+                found_uuids.add(device_data['uuid'])
+            
+            for target_uuid, target_name in self.target_devices.items():
+                if target_uuid not in found_uuids:
+                    # Create a fake address for the missing device based on UUID
+                    fake_addr = f"missing_{target_uuid[:8]}"
+                    target_devices_found[fake_addr] = {
+                        'name': target_name,
+                        'uuid': target_uuid,
+                        'address': fake_addr,
+                        'rssi': -100,
+                        'signal_quality': 'Not Detected'
+                    }
+                    logger.info(f"Target device not detected: {target_name} ({target_uuid}), setting RSSI to -100")
+            
+            logger.info(f"Scan completed. Found {len(all_devices)} total devices, {len(target_devices_found)} target devices (including not detected)")
             
             return all_devices, target_devices_found
             
@@ -210,7 +230,7 @@ class UUIDBluetoothScanner:
                 response = requests.post(url, headers=headers, json=payload)
                 
                 if response.status_code in (200, 201):
-                    logger.info(f"Successfully updated {entity_id} in Home Assistant")
+                    logger.info(f"Successfully updated {entity_id} in Home Assistant (RSSI: {data['rssi']})")
                 else:
                     logger.error(f"Failed to update {entity_id}. Status: {response.status_code}, Response: {response.text}")
             
@@ -227,28 +247,44 @@ class UUIDBluetoothScanner:
         """
         if not devices:
             print("\nNo Bluetooth devices detected during scan.")
-            return
-        
-        print("\n=== All Detected Bluetooth Devices ===")
-        print(f"Total devices found: {len(devices)}")
-        print(f"Target devices found: {len(target_devices)}")
-        print("-" * 70)
-        
-        for i, (addr, dev_info) in enumerate(devices.items(), 1):
-            is_target = "✓" if addr in target_devices else " "
-            target_name = target_devices[addr]['name'] if addr in target_devices else ""
-            target_str = f" ({target_name})" if target_name else ""
-            
-            print(f"{i}. [{is_target}] {dev_info['name']} ({dev_info['address']}){target_str}")
-            print(f"   RSSI: {dev_info['rssi']} dBm ({dev_info['signal_quality']})")
-
-            if 'uuids' in dev_info and dev_info['uuids']:
-                print(f"   UUIDs: {', '.join(dev_info['uuids'])}")
-  
-            if 'manufacturer_data' in dev_info and dev_info['manufacturer_data']:
-                print(f"   Manufacturer Data: {dev_info['manufacturer_data']}")
-            
+        else:
+            print("\n=== All Detected Bluetooth Devices ===")
+            print(f"Total devices found: {len(devices)}")
             print("-" * 70)
+            
+            for i, (addr, dev_info) in enumerate(devices.items(), 1):
+                is_target = "✓" if any(td['address'] == dev_info['address'] for td in target_devices.values()) else " "
+                target_name = ""
+                for td in target_devices.values():
+                    if td['address'] == dev_info['address']:
+                        target_name = f" ({td['name']})"
+                        break
+                
+                print(f"{i}. [{is_target}] {dev_info['name']} ({dev_info['address']}){target_name}")
+                print(f"   RSSI: {dev_info['rssi']} dBm ({dev_info['signal_quality']})")
+
+                if 'uuids' in dev_info and dev_info['uuids']:
+                    print(f"   UUIDs: {', '.join(dev_info['uuids'])}")
+      
+                if 'manufacturer_data' in dev_info and dev_info['manufacturer_data']:
+                    print(f"   Manufacturer Data: {dev_info['manufacturer_data']}")
+                
+                print("-" * 70)
+
+        # Show target devices status
+        if target_devices:
+            print(f"\n=== Target Devices Status ===")
+            print(f"Target devices configured: {len(self.target_devices)}")
+            print(f"Target devices found/tracked: {len(target_devices)}")
+            print("-" * 70)
+            
+            for addr, td in target_devices.items():
+                status_icon = "✓" if td['rssi'] > -100 else "✗"
+                print(f"[{status_icon}] {td['name']} ({td['uuid']})")
+                print(f"   RSSI: {td['rssi']} dBm ({td['signal_quality']})")
+                if td['rssi'] > -100:
+                    print(f"   Address: {td['address']}")
+                print("-" * 70)
     
     def generate_config(self, devices):
         """
@@ -318,7 +354,7 @@ class UUIDBluetoothScanner:
                 start_time = time.time()
                 all_devices, target_devices = await self.scan_for_devices(scan_time)
 
-                logger.info(f"Found {len(all_devices)} total devices, {len(target_devices)} target devices")
+                logger.info(f"Found {len(all_devices)} total devices, {len(target_devices)} target devices (including not detected)")
                 
                 if target_devices and self.hass_url and self.hass_token:
                     self.send_to_hass(target_devices)
