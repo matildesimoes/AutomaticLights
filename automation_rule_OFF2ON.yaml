@@ -6,8 +6,16 @@ triggers:
     entity_id: 21de8f39b88bc7392a2f988a93e48a31
     domain: sensor
     trigger: device
-    below: 0.25
-conditions: []
+    below: 0.3
+conditions:
+  - condition: and
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.bt_xiaomi_13t
+        above: -85
+      - condition: numeric_state
+        entity_id: sensor.bt_mi_a2
+        above: -85
 actions:
   - if:
       - type: is_voltage
